@@ -1,0 +1,1 @@
+This is a simple GUI to plot and compute parameters from JV data. It can use 2 or 4 column format. If your data is in a 2 column format the code will identify the switch in the regime and mark the different forward and reverse curves.
