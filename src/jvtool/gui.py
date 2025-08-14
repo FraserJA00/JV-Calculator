@@ -32,7 +32,7 @@ class JVApp(tk.Tk):
 
         ttk.Button(top, text="Open File(s) — Plot & Compute", command=self.on_open).pack(side=tk.LEFT)
         ttk.Button(top, text="Clear", command=self.on_clear).pack(side=tk.LEFT, padx=6)
-        ttk.Button(top, text="Legend & Colors", command=lambda: self.left_tabs.select(self.tab_legend)).pack(side=tk.LEFT, padx=6)
+        ttk.Button(top, text="Legend & Colours", command=lambda: self.left_tabs.select(self.tab_legend)).pack(side=tk.LEFT, padx=6)
         self.bind_all("<Control-s>", lambda e: self.on_save_png())
 
         axes = ttk.Frame(self)
@@ -72,7 +72,7 @@ class JVApp(tk.Tk):
         self.metrics_text.tag_configure("bold", font=("Segoe UI", 10, "bold"))
         
         self.tab_legend = ttk.Frame(self.left_tabs)
-        self.left_tabs.add(self.tab_legend, text="Legend & Colors")
+        self.left_tabs.add(self.tab_legend, text="Legend & Colours")
         
         self.legend_canvas = tk.Canvas(self.tab_legend, bd=0, highlightthickness=0)
         self.legend_scroll = ttk.Scrollbar(self.tab_legend, orient="vertical", command=self.legend_canvas.yview)
