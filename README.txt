@@ -6,6 +6,7 @@ Built with Python, Tkinter, Pandas and Matplotlib.
 
 This GUI allows users to customise data labels and colours.
 This feature can be found in the second tab beside the Parameters column.
+Or alternatively pressing the legend & colours button will take you there.
 
 The figure will auto update following changes.
 
