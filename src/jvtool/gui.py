@@ -12,6 +12,9 @@ import pandas as pd
 import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+from jvtool.io import read_table, sweeps_from_array
+from jvtool.metrics import compute_metrics_for
+from jvtool.plotting import draw_plot, apply_plot_style
 
 class JVApp(tk.Tk):
     def __init__(self):
@@ -177,94 +180,18 @@ class JVApp(tk.Tk):
         if errors:
             messagebox.showwarning("Some files skipped", "\n".join(errors))
                                  
-    """
-    Need a way to identify if a file contains all data in 2 columns (i.e. is conctenated)
-    Split by vhange in sign of voltage values
-    """
-    
-    def _find_voltage_change(self, V, eps=1e-6, min_len=10):
-        V = np.asarray(V, dtype=float)
-        if V.size <3:
-            return []
-        dV = np.diff(V)
-        dV[np.abs(dV) < eps] = 0.0
-        sign = np.sign(dV)
-        
-        segments = []
-        k = 0
-        
-        while k < sign.size and sign[k] == 0:
-            k += 1
-        if k == sign.size:
-            return [(0, V.size, 0)]
-        
-        current_sign = sign[k]
-        i0 = 0
-        
-        for i in range(k + 1, sign.size):
-            if sign[i] == 0:
-                continue
-            if sign[i] != current_sign:
-                if (i + 1 - i0) >= min_len:
-                    segments.append((i0, i + 1, int(current_sign)))
-                i0 = i + 1
-                current_sign = sign[i]
-                
-        if (V.size - i0) >= min_len:
-            segments.append((i0, V.size, int(current_sign)))
-        
-        if not segments:
-            segments = [(0, V.size, int(current_sign))]
-        return segments
-    
+   
     def _draw_plot(self, apply_defaults=True):
-    
-        preserve_view = not apply_defaults and hasattr(self, "ax")
-        if preserve_view:
-            prev_xlim = self.ax.get_xlim()
-            prev_ylim = self.ax.get_ylim()
-    
-        self.ax.clear()
-    
-        colors  = ["#d62728", "#1f1f1f", "#1f77b4", "#2ca02c", "#ff7f0e", "#9467bd"]
-        markers = ["o", "^", "s", "d", "v", "P"]
-    
-        for fi, ds in enumerate(self.datasets):
-            base_label = ds.get("display_name") or os.path.splitext(os.path.basename(ds["path"]))[0]
-            color      = ds.get("color") or colors[fi % len(colors)]
-            label_idx  = self._choose_label_index(ds["sweeps"], ds.get("label_sweep", "auto"))
-    
-            for si, (V, J) in enumerate(ds["sweeps"]):
-                me = max(1, len(V) // 30)
-                line_label = base_label if (label_idx is not None and si == label_idx) else "_nolegend_"
-    
-                is_rev    = self._sweep_is_reverse(V, J) 
-                linestyle = "-" if is_rev else "--"
-                kwargs = dict(label=line_label, linestyle=linestyle, color=color)
-                if is_rev:
-                    kwargs.update(marker=markers[(fi + si) % len(markers)], markevery=me)
-    
-                self.ax.plot(V, J, **kwargs)
-    
-        self.ax.axhline(0, lw=1.5, color="black")
-        self.ax.set_xlabel("Voltage (V)", fontsize = 14)
-        self.ax.set_ylabel("Current Density (mA/cm²)", fontsize = 14)
-        self.ax.legend(frameon=False, loc="best", fontsize = 12)
-        self._apply_plot_style()
-    
-        if preserve_view:
-            x0, x1 = prev_xlim
-            y0, y1 = prev_ylim
-            if x0 != x1 and y0 != y1:
-                self.ax.set_xlim(x0, x1)
-                self.ax.set_ylim(y0, y1)
-            else:
-                self.ax.set_xlim(*self.default_xlim)
-                self.ax.set_ylim(*self.default_ylim)
-        else:
-            self.ax.set_xlim(*self.default_xlim)
-            self.ax.set_ylim(*self.default_ylim)
-    
+        style_opts = dict(
+            ticks_in=self.axis_ticks_inwards,
+            border=self.graph_border_thickness,
+            tick_len=self.tick_length,
+            tick_w=self.tick_width,
+            label_fs=16,
+            legend_fs=14,
+        )
+        draw_plot(self.ax, self.datasets, self.default_xlim, self.default_ylim,
+                style_opts, preserve_view=not apply_defaults)
         self.canvas.draw_idle()
               
     def _find_Jsc(self, V, J, v=0.0):
@@ -401,27 +328,15 @@ class JVApp(tk.Tk):
         self.canvas.draw_idle()
         
     def _apply_plot_style(self):
-        ax = self.ax
-        
-        ticks_in = getattr(self, "axis_ticks_inwards", True)
-        border = getattr(self, "graph_border_thickness", 1.5)
-        tick_len = getattr(self, "tick_length", 5)
-        tick_w = getattr(self, "tick_width", 1.5)
-        
-        ax.tick_params(
-            axis="both",
-            direction="in" if ticks_in else "out",
-            top=True,
-            right=True,
-            length=tick_len,
-            width=tick_w,
-            )
-        
-        for side in ("top", "bottom", "left", "right"):
-            ax.spines[side].set_linewidth(border)
-            
-        ax.xaxis.set_tick_params(labelsize=10, pad=8)
-        ax.yaxis.set_tick_params(labelsize=10, pad=8)
+        apply_plot_style(
+            self.ax,
+            ticks_in=self.axis_ticks_inwards,
+            border=self.graph_border_thickness,
+            tick_len=self.tick_length,
+            tick_w=self.tick_width,
+            label_fs=16,
+            legend_fs=14,
+        )
         
     def on_reset_axes(self):
         if not getattr(self, "sweep_arrays", None):
@@ -460,37 +375,7 @@ class JVApp(tk.Tk):
         self.ax.set_xlim(*self.default_xlim); self.ax.set_ylim(*self.default_ylim)
         self.canvas.draw_idle()
         
-        
-    def _sweeps_from_array(self, arr):
-        r, c = arr.shape
-        summary = f"{r} rows x {c} columns"
-    
-        if c == 2:
-            V = arr[:, 0]
-            J = arr[:, 1]
-            min_len = max(10, r // 50)
-            segs = self._find_voltage_change(V, eps=1e-6, min_len=min_len)
-    
-            if segs and len(segs) >= 2:
-                (s0, e0, sign0) = segs[0]
-                (s1, e1, sign1) = segs[1]
-                sweeps = [(V[s0:e0], J[s0:e0]), (V[s1:e1], J[s1:e1])]
-                summary += f" | 2 column concatenated: segments [{s0}:{e0}] (sign {sign0}), [{s1}:{e1}] (sign {sign1})"
-            else:
-                sweeps = [(V, J)]
-                summary += " | 2 column single sweep"
-    
-        elif c == 4:
-            V1, J1 = arr[:, 0], arr[:, 1]
-            V2, J2 = arr[:, 2], arr[:, 3]
-            sweeps = [(V1, J1), (V2, J2)]
-            summary += " | Detected 2 sweeps: (0, 1), (2, 3)"
-    
-        else:
-            raise ValueError(f"Unsupported column count ({c}). Need 2 or 4.")
-    
-        return sweeps, summary
-        
+
     def on_save_png(self):
         default = "jv_plot.png"
         path = filedialog.asksaveasfilename(

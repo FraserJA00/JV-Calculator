@@ -32,26 +32,26 @@ def find_voltage_change(V: np.ndarray, eps: float = 1e-6, min_len: int = 10):
 
 def sweeps_from_array(arr: np.ndarray):
         r, c = arr.shape
-    summary = f"{r} rows x {c} columns"
+        summary = f"{r} rows x {c} columns"
 
-    if c == 4:
-        V1, J1 = arr[:, 0], arr[:, 1]
-        V2, J2 = arr[:, 2], arr[:, 3]
-        sweeps = [(V1, J1), (V2, J2)]
-        summary += " | Detected 2 sweeps: (0,1),(2,3)"
-        return sweeps, summary
+        if c == 4:
+            V1, J1 = arr[:, 0], arr[:, 1]
+            V2, J2 = arr[:, 2], arr[:, 3]
+            sweeps = [(V1, J1), (V2, J2)]
+            summary += " | Detected 2 sweeps: (0,1),(2,3)"
+            return sweeps, summary
 
-    if c == 2:
-        V, J = arr[:, 0], arr[:, 1]
-        min_len = max(10, r // 50)
-        segs = find_voltage_change(V, min_len=min_len)
-        if len(segs) >= 2:
-            (s0, e0, sg0), (s1, e1, sg1) = segs[0], segs[1], 
-            sweeps = [(V[s0:e0], J[s0:e0]), (V[s1:e1], J[s1:e1])]
-            summary += f" | 2-col concatenated: [{s0}:{e0}] (sign {sg0}), [{s1}:{e1}] (sign {sg1})"
-        else:
-            sweeps = [(V, J)]
-            summary += " | 2-col single sweep"
-        return sweeps, summary
+        if c == 2:
+            V, J = arr[:, 0], arr[:, 1]
+            min_len = max(10, r // 50)
+            segs = find_voltage_change(V, min_len=min_len)
+            if len(segs) >= 2:
+                (s0, e0, sg0), (s1, e1, sg1) = segs[0], segs[1], 
+                sweeps = [(V[s0:e0], J[s0:e0]), (V[s1:e1], J[s1:e1])]
+                summary += f" | 2-col concatenated: [{s0}:{e0}] (sign {sg0}), [{s1}:{e1}] (sign {sg1})"
+            else:
+                sweeps = [(V, J)]
+                summary += " | 2-col single sweep"
+            return sweeps, summary
 
-    raise ValueError(f"Unsupported column count ({c}). Need 2 or 4.")
+        raise ValueError(f"Unsupported column count ({c}). Need 2 or 4.")
